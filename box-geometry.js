@@ -20,7 +20,7 @@
 
   const DEFAULTS = {
     W: 99.4, H: 99.4, D: 44.2, t: 3.0,
-    acr: 2.1, gap: 2.2, tech: 0.3,
+    acr: 2.0, gap: 2.4, tech: 0.3,
     ov: 0.4, frame: 4.2, lip: 0.6,
     tornOff: STRIP_FRONT,
   };
@@ -55,13 +55,13 @@
   }
 
   function topPiece(p, j) {
-    const t = p.t, W = p.W, H = p.H;
+    const t = p.t, W = p.W, H = p.H, e = j.tipE;
     const [aw, bw] = j.slotW, [ah, bh] = j.slotH;
     return [
-      [W + 2 * t, ah + t], [W + t, ah + t], [W + t, bh + t], [W + 2 * t, bh + t],
-      [W + 2 * t, H + 2 * t], [bw + t, H + 2 * t], [bw + t, H + t], [aw + t, H + t],
-      [aw + t, H + 2 * t], [0, H + 2 * t], [0, bh + t], [t, bh + t],
-      [t, ah + t], [0, ah + t], [0, 0], [W + 2 * t, 0],
+      [W + 2 * t + e, ah + t], [W + t, ah + t], [W + t, bh + t], [W + 2 * t + e, bh + t],
+      [W + 2 * t + e, H + 2 * t + e], [bw + t, H + 2 * t + e], [bw + t, H + t], [aw + t, H + t],
+      [aw + t, H + 2 * t + e], [-e, H + 2 * t + e], [-e, bh + t], [t, bh + t],
+      [t, ah + t], [-e, ah + t], [-e, -e], [W + 2 * t + e, -e],
     ];
   }
 
@@ -70,11 +70,11 @@
     const [at, bt] = j.tabH, [as, bs] = j.slotH;
     const n0 = j.smallC + t - j.smallSlot / 2, n1 = j.smallC + t + j.smallSlot / 2;
     return [
-      [0, 0], [n0, 0], [n0, t], [n1, t], [n1, 0], [Df + t, 0],
+      [-e, -e], [n0, -e], [n0, t], [n1, t], [n1, -e], [Df + t, -e],
       [Df + t, at + t], [Df + 2 * t + e, at + t], [Df + 2 * t + e, bt + t], [Df + t, bt + t],
-      [Df + t, H + 2 * t], [n1, H + 2 * t], [n1, H + t], [n0, H + t],
-      [n0, H + 2 * t], [0, H + 2 * t],
-      [0, bs + t], [t, bs + t], [t, as + t], [0, as + t],
+      [Df + t, H + 2 * t + e], [n1, H + 2 * t + e], [n1, H + t], [n0, H + t],
+      [n0, H + 2 * t + e], [-e, H + 2 * t + e],
+      [-e, bs + t], [t, bs + t], [t, as + t], [-e, as + t],
     ];
   }
 
@@ -86,8 +86,8 @@
     return [
       [-e, bt + t], [-e, at + t], [t, at + t], [t, t],
       [s0, t], [s0, -e], [s1, -e], [s1, t],
-      [Df + 2 * t, t], [Df + 2 * t, as + t], [Df + t, as + t], [Df + t, bs + t],
-      [Df + 2 * t, bs + t], [Df + 2 * t, W + t], [s1, W + t], [s1, W + 2 * t + e],
+      [Df + 2 * t + e, t], [Df + 2 * t + e, as + t], [Df + t, as + t], [Df + t, bs + t],
+      [Df + 2 * t + e, bs + t], [Df + 2 * t + e, W + t], [s1, W + t], [s1, W + 2 * t + e],
       [s0, W + 2 * t + e], [s0, W + t], [t, W + t], [t, bt + t],
     ];
   }
@@ -98,7 +98,7 @@
     const [as, bs] = j.slotW;
     const s0 = j.smallC + t - j.smallTab / 2, s1 = j.smallC + t + j.smallTab / 2;
     return [
-      [0, W + t], [0, bs + t], [t, bs + t], [t, as + t], [0, as + t], [0, t],
+      [-e, W + t], [-e, bs + t], [t, bs + t], [t, as + t], [-e, as + t], [-e, t],
       [s0, t], [s0, -e], [s1, -e], [s1, t],
       [fh + t, t], [fh + t, W + t], [s1, W + t], [s1, W + 2 * t + e],
       [s0, W + 2 * t + e], [s0, W + t],
