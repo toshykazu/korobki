@@ -22,6 +22,7 @@
     W: 99.4, H: 99.4, D: 44.2, t: 3.0,
     acr: 2.1, gap: 2.2, tech: 0.3,
     ov: 0.4, frame: 4.2, lip: 0.6,
+    tornOff: STRIP_FRONT,
   };
 
   function joints(p) {
@@ -132,10 +133,10 @@
       { id: "ins2", name: "Вкладка 2", material: "ply", pts: rectPts(H, insH) },
       { id: "acrylic", name: "Оргстекло", material: "acrylic",
         rounded: roundedRect(0, 0, acrW, acrL, ACR_R),
-        strip: { x: 0, y: acrL - STRIP_FRONT - STRIP_H, w: acrW, h: STRIP_H },
+        strip: { x: 0, y: acrL - p.tornOff - STRIP_H, w: acrW, h: STRIP_H },
         torn: {
           x: acrW / 2 + TORN_DX_FROM_CENTER,
-          y: acrL - STRIP_FRONT - STRIP_H + TORN_DY_FROM_STRIP,
+          y: acrL - p.tornOff - STRIP_H + TORN_DY_FROM_STRIP,
           d: TORN_D, scale: PT,
         } },
     ];
