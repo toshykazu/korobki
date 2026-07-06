@@ -10,7 +10,9 @@ const BG = require("./box-geometry.js");
 const PT = 25.4 / 72;
 const svg = fs.readFileSync(path.join(__dirname, "korobka.svg"), "utf8");
 
-const ETALON = { W: 99.4, H: 99.4, D: 44.2, t: 3.0, acr: 2.1, gap: 2.2, tech: 0.3, ov: 0.4, frame: 4.2, lip: 0.6 };
+// D — глубина под крышкой (Dfull = D + gap). В CDR-исходнике та же полость 46.6
+// задавалась как 44.2 + оргстекло 2.1 + техзазор 0.3 (параметр tech удалён 2026-07).
+const ETALON = { W: 99.4, H: 99.4, D: 44.4, t: 3.0, acr: 2.1, gap: 2.2, ov: 0.4, frame: 4.2, lip: 0.6 };
 
 const REF_IDS = {
   path291: "top", path292: "sideR", path293: "sideL",
