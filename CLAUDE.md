@@ -32,8 +32,10 @@
 - `build-artifact.js` → `artifact.html` — сборка одностраничной версии для
   Claude Artifacts (движок инлайном, без обёрток html/head/body).
   Онлайн-версия: https://claude.ai/code/artifact/4343735a-69e2-43e5-b956-6f41cbe8bbbb
-  Обновление: `node build-artifact.js`, затем инструментом Artifact
-  задеплоить artifact.html на тот же URL (из чужой сессии — передать `url`).
+  **Правило: после любых правок index.html или box-geometry.js — сразу
+  пересобрать (`node build-artifact.js`) и передеплоить artifact.html
+  инструментом Artifact на этот же URL (параметр `url` + favicon 📦),
+  не дожидаясь просьбы пользователя.** Артефакт сам не обновляется.
 - `generate_box.py` — **legacy** CLI-генератор старой модели (только толщина,
   без новых параметров). Актуальный экспорт — из index.html.
 
