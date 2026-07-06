@@ -94,17 +94,6 @@
     background: #f6dfd2;
     border-left: 3px solid var(--accent);
   }
-  #derived {
-    margin: 14px 20px 0;
-    padding: 10px 12px;
-    font-family: "SF Mono", ui-monospace, Menlo, monospace;
-    font-size: 11.5px;
-    line-height: 1.7;
-    color: var(--ink-2);
-    background: #fffdf8;
-    border: 1px solid var(--line);
-  }
-  #derived b { color: var(--ink); font-weight: 600; }
 
   .actions { padding: 16px 20px 0; display: flex; flex-direction: column; gap: 8px; }
   button {
@@ -175,7 +164,6 @@
       <div class="param"><label>Надпись TORN <small>от переднего края крышки</small></label><input data-p="tornOff" type="number" step="0.5" min="0"><span class="unit">мм</span></div>
     </div>
     <div id="warnings"></div>
-    <div id="derived"></div>
     <div class="actions">
       <button class="primary" id="dlPly">Скачать SVG — фанера</button>
       <button class="secondary" id="dlAcr">Скачать SVG — оргстекло</button>
@@ -472,14 +460,6 @@ function updateDerived(m) {
   const p = m.p, Df = m.Dfull;
   document.getElementById("headDims").innerHTML =
     `внутр. <b>${fmt(p.W)} × ${fmt(p.H)} × ${fmt(p.D)}</b> · габарит <b>${fmt(p.W + 2 * p.t)} × ${fmt(p.H + 2 * p.t)} × ${fmt(Df + 2 * p.t)}</b> мм`;
-  const bigW = p.W * 52 / 99.4, bigH = p.H * 52 / 99.4, small = Df * 14 / 46.6;
-  document.getElementById("derived").innerHTML =
-    `полная полость <b>${fmt(Df, 2)}</b> мм (глубина ${fmt(p.D)} + щель ${fmt(p.gap)})<br>` +
-    `окно <b>${fmt(p.W - 2 * p.frame)} × ${fmt(p.H - 2 * p.frame)}</b> мм<br>` +
-    `оргстекло <b>${fmt(p.W - 0.6)} × ${fmt(p.H + p.t + p.lip)}</b> мм<br>` +
-    `шип/паз X <b>${fmt(bigW + p.kerf, 2)}/${fmt(bigW - p.kerf, 2)}</b>` +
-    ` · Y <b>${fmt(bigH + p.kerf, 2)}/${fmt(bigH - p.kerf, 2)}</b><br>` +
-    `малый шип <b>${fmt(small + p.kerf, 2)}</b> · зазор крышки <b>${fmt(p.gap - p.acr, 2)}</b> мм`;
   const warn = [];
   if (p.gap <= p.acr) warn.push("Щель ≤ толщины оргстекла — крышка не войдёт.");
   if (p.W - 2 * p.frame < 10 || p.H - 2 * p.frame < 10) warn.push("Окно слишком мало или отсутствует.");
