@@ -21,23 +21,24 @@
   const DEFAULTS = {
     W: 99.4, H: 99.4, D: 44.2, t: 3.4,
     acr: 2.0, gap: 2.4,
-    ov: 0.4, frame: 4.2, lip: 0,
+    kerf: 0.2, frame: 4.2, lip: 0,
     tornOff: STRIP_FRONT,
   };
 
   function joints(p) {
     const Dfull = p.D + p.gap;
+    const k = p.kerf;
     const big = (L) => L * BIG_R;
     const j = {
       Dfull,
-      tabW: [p.W / 2 - (big(p.W) + p.ov / 2) / 2, p.W / 2 + (big(p.W) + p.ov / 2) / 2],
-      slotW: [p.W / 2 - (big(p.W) - p.ov / 2) / 2, p.W / 2 + (big(p.W) - p.ov / 2) / 2],
-      tabH: [p.H / 2 - (big(p.H) + p.ov / 2) / 2, p.H / 2 + (big(p.H) + p.ov / 2) / 2],
-      slotH: [p.H / 2 - (big(p.H) - p.ov / 2) / 2, p.H / 2 + (big(p.H) - p.ov / 2) / 2],
+      tabW: [p.W / 2 - (big(p.W) + k) / 2, p.W / 2 + (big(p.W) + k) / 2],
+      slotW: [p.W / 2 - (big(p.W) - k) / 2, p.W / 2 + (big(p.W) - k) / 2],
+      tabH: [p.H / 2 - (big(p.H) + k) / 2, p.H / 2 + (big(p.H) + k) / 2],
+      slotH: [p.H / 2 - (big(p.H) - k) / 2, p.H / 2 + (big(p.H) - k) / 2],
       smallC: Dfull * SMALL_C,
-      smallTab: Dfull * SMALL_R + p.ov / 2,
-      smallSlot: Dfull * SMALL_R - p.ov / 2,
-      tipE: p.tipComp === false ? 0 : p.ov / 2,
+      smallTab: Dfull * SMALL_R + k,
+      smallSlot: Dfull * SMALL_R - k,
+      tipE: p.tipComp === false ? 0 : k,
     };
     return j;
   }
@@ -115,6 +116,7 @@
 
   function model(params) {
     const p = Object.assign({}, DEFAULTS, params);
+    if (params && params.ov != null && params.kerf == null) p.kerf = params.ov / 2;
     const j = joints(p);
     const t = p.t, W = p.W, H = p.H, Df = j.Dfull;
     const insH = Df - p.gap;

@@ -173,7 +173,7 @@
     </div>
     <div class="group">
       <h2>Рез и окно</h2>
-      <div class="param"><label>Натяг шип/паз <small>компенсация реза, суммарно</small></label><input data-p="ov" type="number" step="0.05" min="0"><span class="unit">мм</span></div>
+      <div class="param"><label>Толщина реза <small>kerf; шип +k, паз −k, торцы +k</small></label><input data-p="kerf" type="number" step="0.05" min="0"><span class="unit">мм</span></div>
       <div class="param"><label>Рамка окна <small>от внутреннего края</small></label><input data-p="frame" type="number" step="0.1" min="1"><span class="unit">мм</span></div>
       <div class="param"><label>Надпись TORN <small>от переднего края крышки</small></label><input data-p="tornOff" type="number" step="0.5" min="0"><span class="unit">мм</span></div>
     </div>
@@ -208,6 +208,8 @@ const store = {
 };
 const storedParams = JSON.parse(store.get() || "{}");
 delete storedParams.lip;
+if (storedParams.ov != null && storedParams.kerf == null) storedParams.kerf = storedParams.ov / 2;
+delete storedParams.ov;
 let params = Object.assign({}, BG.DEFAULTS, storedParams);
 let cam = { theta: -0.62, phi: 0.42, dist: 0 };
 let explode = 0, slide = 0;
@@ -423,11 +425,11 @@ function dimsFor(param, m) {
       const zTop = Df - p.gap + p.acr;
       return [{ a: [W * 0.68, yF, zTop], b: [W * 0.68, yF - p.tornOff, zTop], dir: [0, 0, 1], dist: 10, label: fmt(p.tornOff) }];
     }
-    case "ov": {
+    case "kerf": {
       const big = H * 52 / 99.4;
-      const y0 = H / 2 - (big + p.ov / 2) / 2, y1 = H / 2 + (big + p.ov / 2) / 2;
+      const y0 = H / 2 - (big + p.kerf) / 2, y1 = H / 2 + (big + p.kerf) / 2;
       return [{ a: [W + t, y0, Df + t], b: [W + t, y1, Df + t], dir: [1, 0, 0.3], dist: 12,
-        label: `шип ${fmt(big + p.ov / 2, 2)} / паз ${fmt(big - p.ov / 2, 2)}` }];
+        label: `шип ${fmt(big + p.kerf, 2)} / паз ${fmt(big - p.kerf, 2)}` }];
     }
   }
   return [];
@@ -478,9 +480,9 @@ function updateDerived(m) {
     `полная полость <b>${fmt(Df, 2)}</b> мм (глубина ${fmt(p.D)} + щель ${fmt(p.gap)})<br>` +
     `окно <b>${fmt(p.W - 2 * p.frame)} × ${fmt(p.H - 2 * p.frame)}</b> мм<br>` +
     `оргстекло <b>${fmt(p.W - 0.6)} × ${fmt(p.H + p.t + p.lip)}</b> мм<br>` +
-    `шип/паз X <b>${fmt(bigW + p.ov / 2, 2)}/${fmt(bigW - p.ov / 2, 2)}</b>` +
-    ` · Y <b>${fmt(bigH + p.ov / 2, 2)}/${fmt(bigH - p.ov / 2, 2)}</b><br>` +
-    `малый шип <b>${fmt(small + p.ov / 2, 2)}</b> · зазор крышки <b>${fmt(p.gap - p.acr, 2)}</b> мм`;
+    `шип/паз X <b>${fmt(bigW + p.kerf, 2)}/${fmt(bigW - p.kerf, 2)}</b>` +
+    ` · Y <b>${fmt(bigH + p.kerf, 2)}/${fmt(bigH - p.kerf, 2)}</b><br>` +
+    `малый шип <b>${fmt(small + p.kerf, 2)}</b> · зазор крышки <b>${fmt(p.gap - p.acr, 2)}</b> мм`;
   const warn = [];
   if (p.gap <= p.acr) warn.push("Щель ≤ толщины оргстекла — крышка не войдёт.");
   if (p.W - 2 * p.frame < 10 || p.H - 2 * p.frame < 10) warn.push("Окно слишком мало или отсутствует.");

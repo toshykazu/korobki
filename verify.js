@@ -12,7 +12,7 @@ const svg = fs.readFileSync(path.join(__dirname, "korobka.svg"), "utf8");
 
 // D — глубина под крышкой (Dfull = D + gap). В CDR-исходнике та же полость 46.6
 // задавалась как 44.2 + оргстекло 2.1 + техзазор 0.3 (параметр tech удалён 2026-07).
-const ETALON = { W: 99.4, H: 99.4, D: 44.4, t: 3.0, acr: 2.1, gap: 2.2, ov: 0.4, frame: 4.2, lip: 0.6 };
+const ETALON = { W: 99.4, H: 99.4, D: 44.4, t: 3.0, acr: 2.1, gap: 2.2, kerf: 0.2, frame: 4.2, lip: 0.6 };
 
 const REF_IDS = {
   path291: "top", path292: "sideR", path293: "sideL",
@@ -110,12 +110,12 @@ const insOk = Math.abs(ins.w - 99.4) < 1e-9 && Math.abs(ins.h - 44.4) < 1e-9;
 console.log(`${insOk ? "OK  " : "FAIL"} вкладка  ${ins.w}x${ins.h} (ожид. 99.4x44.4)`);
 if (!insOk) fail++;
 
-// Компенсация резаных торцов (tipComp по умолчанию): на ov/2 удлинена всякая
+// Компенсация резаных торцов (tipComp по умолчанию): на kerf удлинена всякая
 // кромка, чей торец выходит на наружную поверхность коробки, — торцы сквозных
 // шипов, нижние кромки стенок, передние/задние торцы боковых, все 4 кромки верха.
 const mc = BG.model(ETALON);
 const gc = (id) => mc.pieces.find((p) => p.id === id);
-const e = ETALON.ov / 2;
+const e = ETALON.kerf;
 const TIP_CHECKS = [
   ["bottom", 99.4 + 6 + 2 * e, 99.4 + 6 + 2 * e],
   ["sideL", 46.6 + 6 + 2 * e, 99.4 + 6 + 2 * e],
