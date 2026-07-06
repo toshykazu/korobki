@@ -19,7 +19,8 @@ html = html
   .replace(/<meta[^>]*>\s*/gi, "")
   .replace('<script src="box-geometry.js"></script>', "<script>\n" + engine + "</script>");
 
-html = '<style>html { color-scheme: light; }</style>\n' + html;
+html = '<style>html { color-scheme: light; }</style>\n' +
+  '<script>window.__ARTIFACT__ = true;</script>\n' + html;
 
 fs.writeFileSync(path.join(dir, "artifact.html"), html);
 console.log("OK: artifact.html", html.length, "bytes");
