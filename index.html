@@ -544,71 +544,11 @@ function exportSVG(which) {
     `<text x="0" y="${labelH - 4}" font-family="Arial" font-size="10" fill="#1b1918">${label}</text>\n` +
     els.join("\n") + "\n</svg>\n";
   const name = `korobka_${params.W}x${params.H}x${params.D}_t${which === "ply" ? params.t : params.acr}_${which === "ply" ? "fanera" : "akril"}.svg`;
-  if (window.__ARTIFACT__) { showExportModal(name, svg); return; }
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
   a.download = name;
   a.click();
   URL.revokeObjectURL(a.href);
-}
-
-function showExportModal(name, svg) {
-  const old = document.getElementById("exportModal");
-  if (old) old.remove();
-  const ov = document.createElement("div");
-  ov.id = "exportModal";
-  ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:1000";
-  const box = document.createElement("div");
-  box.style.cssText = "background:#fff;color:#222;max-width:680px;width:92%;max-height:82vh;display:flex;flex-direction:column;gap:10px;padding:16px 18px;border-radius:10px;font:13px/1.45 system-ui,sans-serif;box-shadow:0 12px 40px rgba(0,0,0,.35)";
-  const head = document.createElement("div");
-  head.innerHTML = `<b style="font-family:monospace">${name}</b><br>` +
-    `Песочница онлайн-версии блокирует скачивание файлов. Скопируй SVG и сохрани его в файл с этим именем — или открой локальный index.html, там кнопка качает напрямую.`;
-  const ta = document.createElement("textarea");
-  ta.value = svg;
-  ta.readOnly = true;
-  ta.spellcheck = false;
-  ta.style.cssText = "width:100%;flex:1;min-height:180px;font:11px/1.35 monospace;white-space:pre;border:1px solid #ccc;border-radius:6px;padding:8px;box-sizing:border-box;resize:vertical";
-  ta.addEventListener("focus", () => ta.select());
-  const row = document.createElement("div");
-  row.style.cssText = "display:flex;gap:8px;align-items:center;flex-wrap:wrap";
-  const btn = (label) => {
-    const b = document.createElement("button");
-    b.textContent = label;
-    b.style.cssText = "padding:6px 14px;border:1px solid #888;border-radius:6px;background:#f4f4f4;cursor:pointer;font:13px system-ui,sans-serif";
-    row.appendChild(b);
-    return b;
-  };
-  const status = document.createElement("span");
-  status.style.cssText = "color:#2a7a2a";
-  const copyBtn = btn("Скопировать SVG");
-  copyBtn.addEventListener("click", () => {
-    const done = () => { status.textContent = "Скопировано."; status.style.color = "#2a7a2a"; };
-    const fallback = () => {
-      ta.focus(); ta.select();
-      if (document.execCommand("copy")) done();
-      else { status.textContent = "Не удалось — выдели текст и Cmd/Ctrl+C."; status.style.color = "#a33"; }
-    };
-    if (navigator.clipboard && navigator.clipboard.writeText)
-      navigator.clipboard.writeText(svg).then(done, fallback);
-    else fallback();
-  });
-  const openBtn = btn("Открыть в новой вкладке");
-  openBtn.addEventListener("click", () => {
-    const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
-    const w = window.open(url, "_blank");
-    if (!w) { status.textContent = "Вкладка заблокирована песочницей — используй копирование."; status.style.color = "#a33"; }
-  });
-  const closeBtn = btn("Закрыть");
-  closeBtn.addEventListener("click", () => ov.remove());
-  ov.addEventListener("click", (e) => { if (e.target === ov) ov.remove(); });
-  row.appendChild(status);
-  box.appendChild(head);
-  box.appendChild(ta);
-  box.appendChild(row);
-  ov.appendChild(box);
-  document.body.appendChild(ov);
-  ta.focus();
-  ta.select();
 }
 
 for (const input of document.querySelectorAll("#panel input[data-p]")) {
