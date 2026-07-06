@@ -70,7 +70,9 @@ for (const m of svg.matchAll(/<path\s+d="([^"]+)"[\s\S]*?id="(path\d+)"/g)) {
   if (name) refs[name] = normSet(parseVertices(m[1]));
 }
 
-const model = BG.model(ETALON);
+// Эталон резался БЕЗ компенсации торцов шипов (первая коробка: шипы утоплены),
+// поэтому вершины сверяем в режиме tipComp:false; сама компенсация проверяется ниже.
+const model = BG.model(Object.assign({}, ETALON, { tipComp: false }));
 const get = (id) => model.pieces.find((p) => p.id === id);
 
 const CHECKS = [
@@ -105,6 +107,26 @@ const ins = get("ins1");
 const insOk = Math.abs(ins.w - 99.4) < 1e-9 && Math.abs(ins.h - 44.4) < 1e-9;
 console.log(`${insOk ? "OK  " : "FAIL"} вкладка  ${ins.w}x${ins.h} (ожид. 99.4x44.4)`);
 if (!insOk) fail++;
+
+// Компенсация торцов шипов (tipComp по умолчанию): выступ = t + ov/2,
+// сквозные шипы удлинены на 0.2 к наружным поверхностям.
+const mc = BG.model(ETALON);
+const gc = (id) => mc.pieces.find((p) => p.id === id);
+const e = ETALON.ov / 2;
+const TIP_CHECKS = [
+  ["bottom", 99.4 + 6 + 2 * e, 99.4 + 6 + 2 * e],
+  ["sideL", 46.6 + 6 + e, 99.4 + 6],
+  ["sideR", 46.6 + 6 + e, 99.4 + 6],
+  ["back", 46.6 + 6 + e, 99.4 + 6 + 2 * e],
+  ["front", 44.4 + 3, 99.4 + 6 + 2 * e],
+  ["top", 99.4 + 6, 99.4 + 6],
+];
+for (const [id, ew, eh] of TIP_CHECKS) {
+  const pc = gc(id);
+  const ok = Math.abs(pc.w - ew) < 1e-6 && Math.abs(pc.h - eh) < 1e-6;
+  if (!ok) fail++;
+  console.log(`${ok ? "OK  " : "FAIL"} tipComp ${id.padEnd(7)} ${pc.w.toFixed(1)}x${pc.h.toFixed(1)} (ожид. ${ew.toFixed(1)}x${eh.toFixed(1)})`);
+}
 
 console.log(fail ? `\n${fail} FAIL` : "\nВсё сходится с эталоном.");
 process.exit(fail ? 1 : 0);

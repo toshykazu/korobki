@@ -37,19 +37,20 @@
       smallC: Dfull * SMALL_C,
       smallTab: Dfull * SMALL_R + p.ov / 2,
       smallSlot: Dfull * SMALL_R - p.ov / 2,
+      tipE: p.tipComp === false ? 0 : p.ov / 2,
     };
     return j;
   }
 
   function bottomPiece(p, j) {
-    const t = p.t, W = p.W, H = p.H;
+    const t = p.t, W = p.W, H = p.H, e = j.tipE;
     const [aw, bw] = j.tabW, [ah, bh] = j.tabH;
     return [
-      [0, bh + t], [0, ah + t], [t, ah + t], [t, t],
-      [aw + t, t], [aw + t, 0], [bw + t, 0], [bw + t, t],
-      [W + t, t], [W + t, ah + t], [W + 2 * t, ah + t], [W + 2 * t, bh + t],
-      [W + t, bh + t], [W + t, H + t], [bw + t, H + t], [bw + t, H + 2 * t],
-      [aw + t, H + 2 * t], [aw + t, H + t], [t, H + t], [t, bh + t],
+      [-e, bh + t], [-e, ah + t], [t, ah + t], [t, t],
+      [aw + t, t], [aw + t, -e], [bw + t, -e], [bw + t, t],
+      [W + t, t], [W + t, ah + t], [W + 2 * t + e, ah + t], [W + 2 * t + e, bh + t],
+      [W + t, bh + t], [W + t, H + t], [bw + t, H + t], [bw + t, H + 2 * t + e],
+      [aw + t, H + 2 * t + e], [aw + t, H + t], [t, H + t], [t, bh + t],
     ];
   }
 
@@ -65,12 +66,12 @@
   }
 
   function sidePiece(p, j) {
-    const t = p.t, H = p.H, Df = j.Dfull;
+    const t = p.t, H = p.H, Df = j.Dfull, e = j.tipE;
     const [at, bt] = j.tabH, [as, bs] = j.slotH;
     const n0 = j.smallC + t - j.smallSlot / 2, n1 = j.smallC + t + j.smallSlot / 2;
     return [
       [0, 0], [n0, 0], [n0, t], [n1, t], [n1, 0], [Df + t, 0],
-      [Df + t, at + t], [Df + 2 * t, at + t], [Df + 2 * t, bt + t], [Df + t, bt + t],
+      [Df + t, at + t], [Df + 2 * t + e, at + t], [Df + 2 * t + e, bt + t], [Df + t, bt + t],
       [Df + t, H + 2 * t], [n1, H + 2 * t], [n1, H + t], [n0, H + t],
       [n0, H + 2 * t], [0, H + 2 * t],
       [0, bs + t], [t, bs + t], [t, as + t], [0, as + t],
@@ -78,29 +79,29 @@
   }
 
   function backPiece(p, j) {
-    const t = p.t, W = p.W, Df = j.Dfull;
+    const t = p.t, W = p.W, Df = j.Dfull, e = j.tipE;
     const [at, bt] = j.tabW, [as, bs] = j.slotW;
     const c = Df - j.smallC;
     const s0 = c + t - j.smallTab / 2, s1 = c + t + j.smallTab / 2;
     return [
-      [0, bt + t], [0, at + t], [t, at + t], [t, t],
-      [s0, t], [s0, 0], [s1, 0], [s1, t],
+      [-e, bt + t], [-e, at + t], [t, at + t], [t, t],
+      [s0, t], [s0, -e], [s1, -e], [s1, t],
       [Df + 2 * t, t], [Df + 2 * t, as + t], [Df + t, as + t], [Df + t, bs + t],
-      [Df + 2 * t, bs + t], [Df + 2 * t, W + t], [s1, W + t], [s1, W + 2 * t],
-      [s0, W + 2 * t], [s0, W + t], [t, W + t], [t, bt + t],
+      [Df + 2 * t, bs + t], [Df + 2 * t, W + t], [s1, W + t], [s1, W + 2 * t + e],
+      [s0, W + 2 * t + e], [s0, W + t], [t, W + t], [t, bt + t],
     ];
   }
 
   function frontPiece(p, j) {
-    const t = p.t, W = p.W;
+    const t = p.t, W = p.W, e = j.tipE;
     const fh = j.Dfull - p.gap;
     const [as, bs] = j.slotW;
     const s0 = j.smallC + t - j.smallTab / 2, s1 = j.smallC + t + j.smallTab / 2;
     return [
       [0, W + t], [0, bs + t], [t, bs + t], [t, as + t], [0, as + t], [0, t],
-      [s0, t], [s0, 0], [s1, 0], [s1, t],
-      [fh + t, t], [fh + t, W + t], [s1, W + t], [s1, W + 2 * t],
-      [s0, W + 2 * t], [s0, W + t],
+      [s0, t], [s0, -e], [s1, -e], [s1, t],
+      [fh + t, t], [fh + t, W + t], [s1, W + t], [s1, W + 2 * t + e],
+      [s0, W + 2 * t + e], [s0, W + t],
     ];
   }
 
@@ -142,6 +143,13 @@
     ];
     for (const pc of pieces) {
       if (pc.pts) {
+        const mx = Math.min(...pc.pts.map((q) => q[0]));
+        const my = Math.min(...pc.pts.map((q) => q[1]));
+        if (mx || my) {
+          pc.pts = pc.pts.map(([x, y]) => [x - mx, y - my]);
+          if (pc.holes) pc.holes = pc.holes.map((h) => Object.assign({}, h, { x: h.x - mx, y: h.y - my }));
+        }
+        pc.off = [mx, my];
         pc.w = Math.max(...pc.pts.map((q) => q[0]));
         pc.h = Math.max(...pc.pts.map((q) => q[1]));
       } else {
@@ -159,7 +167,7 @@
     const slide = (opts && opts.slide) || 0;
     const by = (id) => m.pieces.find((q) => q.id === id);
 
-    return [
+    const list = [
       { piece: by("bottom"), th: t,
         origin: [-t, -t, -t], u: [1, 0, 0], v: [0, 1, 0], ext: [0, 0, 1],
         offset: [0, 0, -ex] },
@@ -188,6 +196,12 @@
         origin: [ACR_SIDE, 0, Df - p.gap], u: [1, 0, 0], v: [0, 1, 0], ext: [0, 0, 1],
         offset: [0, slide * (H * 0.8), ex * 0.6] },
     ];
+    for (const pl of list) {
+      const off = pl.piece.off;
+      if (off && (off[0] || off[1]))
+        pl.origin = pl.origin.map((c, i) => c + pl.u[i] * off[0] + pl.v[i] * off[1]);
+    }
+    return list;
   }
 
   return { DEFAULTS, model, placements, TORN_D, PT, STRIP_H, STRIP_FRONT, ACR_SIDE, ACR_R };
