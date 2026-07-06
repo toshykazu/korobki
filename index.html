@@ -371,10 +371,10 @@ function render() {
     const mat = it.poly.mat;
     const hot = hl.has(it.poly.pid);
     if (mat === "ply") {
-      const l = 0.62 + 0.38 * lam;
-      const base = hot ? [214, 152, 108] : [217, 195, 154];
+      const l = 0.55 + 0.45 * lam;
+      const base = hot ? [176, 96, 60] : [74, 77, 84];
       const fill = `rgb(${Math.round(base[0] * l)},${Math.round(base[1] * l)},${Math.round(base[2] * l)})`;
-      const stroke = hot ? "#a33612" : "#4a3f33";
+      const stroke = hot ? "#d8683a" : "#1a1b1f";
       out += `<path d="${dpath}" fill="${fill}" stroke="${stroke}" stroke-width="${hot ? 1 : 0.7}" fill-rule="evenodd" stroke-linejoin="round"/>`;
     } else if (mat === "acrylic") {
       const o = it.poly.kind === "side" ? 0.55 : 0.32;
