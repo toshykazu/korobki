@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Коробки TORN — конфигуратор</title>
+<style>
+  :root {
+    --paper: #f6f2ea;
+    --paper-2: #efe9dd;
+    --ink: #26221c;
+    --ink-2: #6b6156;
+    --line: #d8d0c2;
+    --accent: #c8451b;
+    --accent-2: #a33612;
+    --ply: #d9c39a;
+    --ok: #3d7a44;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font: 14px/1.45 -apple-system, "Segoe UI", sans-serif;
+    color: var(--ink);
+    background: var(--paper);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  header {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    padding: 14px 22px 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  header h1 {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  header .sub { color: var(--ink-2); font-size: 12.5px; }
+  header .dims {
+    margin-left: auto;
+    font-family: "SF Mono", ui-monospace, Menlo, monospace;
+    font-size: 12.5px;
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+  header .dims b { color: var(--ink); font-weight: 600; }
+  main { flex: 1; display: flex; min-height: 0; }
+
+  #panel {
+    width: 288px;
+    flex: none;
+    overflow-y: auto;
+    padding: 6px 0 18px;
+    border-right: 1px solid var(--line);
+    background: linear-gradient(180deg, var(--paper), var(--paper-2));
+  }
+  .group { padding: 12px 20px 4px; }
+  .group + .group { border-top: 1px dashed var(--line); margin-top: 8px; }
+  .group h2 {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    margin-bottom: 8px;
+  }
+  .param { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+  .param label { flex: 1; font-size: 13px; }
+  .param label small { display: block; color: var(--ink-2); font-size: 10.5px; }
+  .param input {
+    width: 74px;
+    font-family: "SF Mono", ui-monospace, Menlo, monospace;
+    font-size: 13px;
+    text-align: right;
+    padding: 4px 6px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: #fffdf8;
+    color: var(--ink);
+  }
+  .param input:focus { outline: none; border-color: var(--accent); }
+  .param .unit { width: 24px; color: var(--ink-2); font-size: 11px; }
+
+  #warnings { padding: 0 20px; }
+  #warnings .warn {
+    margin-top: 8px;
+    padding: 7px 10px;
+    font-size: 12px;
+    color: #7a2408;
+    background: #f6dfd2;
+    border-left: 3px solid var(--accent);
+  }
+  #derived {
+    margin: 14px 20px 0;
+    padding: 10px 12px;
+    font-family: "SF Mono", ui-monospace, Menlo, monospace;
+    font-size: 11.5px;
+    line-height: 1.7;
+    color: var(--ink-2);
+    background: #fffdf8;
+    border: 1px solid var(--line);
+  }
+  #derived b { color: var(--ink); font-weight: 600; }
+
+  .actions { padding: 16px 20px 0; display: flex; flex-direction: column; gap: 8px; }
+  button {
+    font: 600 13px/1 -apple-system, "Segoe UI", sans-serif;
+    padding: 10px 12px;
+    border-radius: 3px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+  }
+  button.primary { background: var(--accent); color: #fff8f2; }
+  button.primary:hover { background: var(--accent-2); }
+  button.secondary { background: none; border-color: var(--ink-2); color: var(--ink); }
+  button.secondary:hover { border-color: var(--ink); }
+  button.ghost { background: none; color: var(--ink-2); font-weight: 400; padding: 4px; }
+  button.ghost:hover { color: var(--accent); }
+
+  #stage { flex: 1; position: relative; min-width: 0; }
+  #view { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  #view.dragging { cursor: grabbing; }
+  #viewbar {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    display: flex;
+    gap: 26px;
+    align-items: center;
+    padding: 12px 22px 14px;
+    background: linear-gradient(180deg, transparent, rgba(246,242,234,0.92) 45%);
+    pointer-events: none;
+  }
+  #viewbar .ctl { display: flex; align-items: center; gap: 10px; pointer-events: auto; }
+  #viewbar label {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+  #viewbar input[type=range] { width: 150px; accent-color: var(--accent); }
+  #viewbar .hint { margin-left: auto; font-size: 11.5px; color: var(--ink-2); pointer-events: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Коробки TORN</h1>
+  <span class="sub">параметрический раскрой под лазер</span>
+  <span class="dims" id="headDims"></span>
+</header>
+<main>
+  <nav id="panel">
+    <div class="group">
+      <h2>Внутренние размеры</h2>
+      <div class="param"><label>Ширина <small>полость по дну, X</small></label><input data-p="W" type="number" step="0.1" min="30"><span class="unit">мм</span></div>
+      <div class="param"><label>Высота <small>полость по дну, Y</small></label><input data-p="H" type="number" step="0.1" min="30"><span class="unit">мм</span></div>
+      <div class="param"><label>Глубина <small>полезная, под крышкой</small></label><input data-p="D" type="number" step="0.1" min="10"><span class="unit">мм</span></div>
+    </div>
+    <div class="group">
+      <h2>Материал</h2>
+      <div class="param"><label>Фанера</label><input data-p="t" type="number" step="0.1" min="1"><span class="unit">мм</span></div>
+      <div class="param"><label>Оргстекло</label><input data-p="acr" type="number" step="0.1" min="0.5"><span class="unit">мм</span></div>
+    </div>
+    <div class="group">
+      <h2>Зазоры и ход крышки</h2>
+      <div class="param"><label>Щель / канал <small>крышка ездит в нём</small></label><input data-p="gap" type="number" step="0.05" min="0.5"><span class="unit">мм</span></div>
+      <div class="param"><label>Техзазор глубины <small>прибавка над содержимым</small></label><input data-p="tech" type="number" step="0.05" min="0"><span class="unit">мм</span></div>
+      <div class="param"><label>Выступ крышки <small>наружу за переднюю стенку</small></label><input data-p="lip" type="number" step="0.1" min="0"><span class="unit">мм</span></div>
+    </div>
+    <div class="group">
+      <h2>Рез и окно</h2>
+      <div class="param"><label>Натяг шип/паз <small>компенсация реза, суммарно</small></label><input data-p="ov" type="number" step="0.05" min="0"><span class="unit">мм</span></div>
+      <div class="param"><label>Рамка окна <small>от внутреннего края</small></label><input data-p="frame" type="number" step="0.1" min="1"><span class="unit">мм</span></div>
+    </div>
+    <div id="warnings"></div>
+    <div id="derived"></div>
+    <div class="actions">
+      <button class="primary" id="dlPly">Скачать SVG — фанера</button>
+      <button class="secondary" id="dlAcr">Скачать SVG — оргстекло</button>
+      <button class="ghost" id="reset">Сбросить к эталону 99.4 × 99.4 × 44.2</button>
+    </div>
+  </nav>
+  <div id="stage">
+    <svg id="view"></svg>
+    <div id="viewbar">
+      <div class="ctl"><label>Разнести</label><input type="range" id="explode" min="0" max="45" step="0.5" value="0"></div>
+      <div class="ctl"><label>Крышка</label><input type="range" id="slide" min="0" max="1" step="0.01" value="0"></div>
+      <span class="hint">вращение — мышью, масштаб — колесом</span>
+    </div>
+  </div>
+</main>
+
+<script src="box-geometry.js"></script>
+<script>
+"use strict";
+const BG = BoxGeometry;
+const LS_KEY = "korobki-params-v1";
+
+let params = Object.assign({}, BG.DEFAULTS, JSON.parse(localStorage.getItem(LS_KEY) || "{}"));
+let cam = { theta: -0.62, phi: 0.42, dist: 0 };
+let explode = 0, slide = 0;
+let focusParam = null, hoverParam = null;
+
+const V = {
+  add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]],
+  sub: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]],
+  mul: (a, k) => [a[0] * k, a[1] * k, a[2] * k],
+  dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2],
+  cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
+  norm: (a) => { const l = Math.hypot(...a) || 1; return [a[0] / l, a[1] / l, a[2] / l]; },
+};
+
+function roundedRectPts(rr, seg = 5) {
+  const { x, y, w, h, r } = rr;
+  const pts = [];
+  const corner = (cx, cy, a0) => {
+    for (let i = 0; i <= seg; i++) {
+      const a = a0 + (i / seg) * Math.PI / 2;
+      pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+    }
+  };
+  corner(x + w - r, y + r, -Math.PI / 2);
+  corner(x + w - r, y + h - r, 0);
+  corner(x + r, y + h - r, Math.PI / 2);
+  corner(x + r, y + r, Math.PI);
+  return pts;
+}
+
+function flattenPathD(d, scale, ox, oy) {
+  const tok = d.match(/[a-zA-Z]|-?[\d.]+(?:e-?\d+)?/g);
+  const subs = [];
+  let cur = [], x = 0, y = 0, sx = 0, sy = 0, cmd = null, i = 0;
+  const num = () => parseFloat(tok[i++]);
+  const pt = () => cur.push([ox + x * scale, oy + y * scale]);
+  const bez = (pts0, n) => {
+    for (let k = 1; k <= n; k++) {
+      const u = k / n, w = 1 - u;
+      let px, py;
+      if (pts0.length === 4) {
+        px = w*w*w*pts0[0][0] + 3*w*w*u*pts0[1][0] + 3*w*u*u*pts0[2][0] + u*u*u*pts0[3][0];
+        py = w*w*w*pts0[0][1] + 3*w*w*u*pts0[1][1] + 3*w*u*u*pts0[2][1] + u*u*u*pts0[3][1];
+      } else {
+        px = w*w*pts0[0][0] + 2*w*u*pts0[1][0] + u*u*pts0[2][0];
+        py = w*w*pts0[0][1] + 2*w*u*pts0[1][1] + u*u*pts0[2][1];
+      }
+      cur.push([ox + px * scale, oy + py * scale]);
+    }
+  };
+  while (i < tok.length) {
+    if (/[a-zA-Z]/.test(tok[i])) {
+      cmd = tok[i++];
+      if (cmd === "z" || cmd === "Z") {
+        if (cur.length) subs.push(cur);
+        cur = []; x = sx; y = sy;
+      }
+      continue;
+    }
+    switch (cmd) {
+      case "m": x += num(); y += num(); if (cur.length) subs.push(cur); cur = []; sx = x; sy = y; pt(); cmd = "l"; break;
+      case "M": x = num(); y = num(); if (cur.length) subs.push(cur); cur = []; sx = x; sy = y; pt(); cmd = "L"; break;
+      case "l": x += num(); y += num(); pt(); break;
+      case "L": x = num(); y = num(); pt(); break;
+      case "h": x += num(); pt(); break;
+      case "H": x = num(); pt(); break;
+      case "v": y += num(); pt(); break;
+      case "V": y = num(); pt(); break;
+      case "c": { const a = [[x, y], [x + num(), y + num()], [x + num(), y + num()], null]; x += num(); y += num(); a[3] = [x, y]; bez(a, 6); break; }
+      case "q": { const a = [[x, y], [x + num(), y + num()], null]; x += num(); y += num(); a[2] = [x, y]; bez(a, 6); break; }
+      default: i++;
+    }
+  }
+  if (cur.length) subs.push(cur);
+  return subs;
+}
+
+function buildScene() {
+  const m = BG.model(params);
+  const places = BG.placements(m, { explode, slide });
+  const polys = [];
+  for (const pl of places) {
+    const pc = pl.piece;
+    const th = pl.th;
+    const map = (px, py, d) => [
+      pl.origin[0] + pl.u[0] * px + pl.v[0] * py + pl.ext[0] * d + pl.offset[0],
+      pl.origin[1] + pl.u[1] * px + pl.v[1] * py + pl.ext[1] * d + pl.offset[1],
+      pl.origin[2] + pl.u[2] * px + pl.v[2] * py + pl.ext[2] * d + pl.offset[2],
+    ];
+    const outline = pc.pts ? pc.pts : roundedRectPts(pc.rounded);
+    const holes = (pc.holes || []).map((h) => roundedRectPts(h));
+    const mat = pc.material;
+    const face = (d) => ({
+      mat, pid: pc.id, kind: "face",
+      rings: [outline.map((q) => map(q[0], q[1], d)), ...holes.map((hp) => hp.map((q) => map(q[0], q[1], d)))],
+    });
+    polys.push(face(0), face(th));
+    const rim = (ring) => {
+      for (let k = 0; k < ring.length; k++) {
+        const a = ring[k], b = ring[(k + 1) % ring.length];
+        polys.push({ mat, pid: pc.id, kind: "side",
+          rings: [[map(a[0], a[1], 0), map(b[0], b[1], 0), map(b[0], b[1], th), map(a[0], a[1], th)]] });
+      }
+    };
+    rim(outline);
+    holes.forEach(rim);
+    if (pc.strip) {
+      const s = pc.strip, d = th + 0.15;
+      polys.push({ mat: "engrave", pid: pc.id, kind: "decor",
+        rings: [[map(s.x, s.y, d), map(s.x + s.w, s.y, d), map(s.x + s.w, s.y + s.h, d), map(s.x, s.y + s.h, d)]] });
+      for (const sub of flattenPathD(pc.torn.d, pc.torn.scale, pc.torn.x, pc.torn.y)) {
+        polys.push({ mat: "letters", pid: pc.id, kind: "decor", rings: [sub.map((q) => map(q[0], q[1], d))] });
+      }
+    }
+  }
+  return { m, polys };
+}
+
+function render() {
+  const svg = document.getElementById("view");
+  const rect = svg.getBoundingClientRect();
+  const { m, polys } = buildScene();
+  const c = [m.p.W / 2, m.p.H / 2, m.Dfull / 2];
+  const R = Math.max(m.p.W, m.p.H, m.Dfull);
+  if (!cam.dist) cam.dist = R * 3.1;
+
+  const ct = Math.cos(cam.theta), st = Math.sin(cam.theta);
+  const cp = Math.cos(cam.phi), sp = Math.sin(cam.phi);
+  const fwd = [-cp * st, -cp * ct, -sp];
+  const right = V.norm(V.cross([0, 0, 1], fwd));
+  const up = V.cross(fwd, right);
+  const eye = V.sub(c, V.mul(fwd, cam.dist));
+  const f = Math.min(rect.width, rect.height) * 1.55;
+  const light = V.norm([0.45, -0.6, 0.75]);
+
+  const project = (p) => {
+    const d = V.sub(p, eye);
+    const z = V.dot(d, fwd);
+    return { x: rect.width / 2 + f * V.dot(d, right) / z, y: rect.height / 2 - f * V.dot(d, up) / z, z };
+  };
+
+  const items = [];
+  for (const poly of polys) {
+    const rings2 = poly.rings.map((ring) => ring.map(project));
+    let zsum = 0, n = 0;
+    for (const ring of rings2) for (const q of ring) { zsum += q.z; n++; }
+    const a = poly.rings[0];
+    let normal = [0, 0, 1];
+    if (a.length >= 3) normal = V.norm(V.cross(V.sub(a[1], a[0]), V.sub(a[2], a[0])));
+    items.push({ poly, rings2, z: zsum / n, normal, world: a });
+  }
+  items.sort((p, q) => q.z - p.z);
+
+  const active = focusParam || hoverParam;
+  const hl = highlightFor(active);
+  let out = "";
+  for (const it of items) {
+    const dpath = it.rings2.map((ring) =>
+      "M" + ring.map((q) => q.x.toFixed(1) + "," + q.y.toFixed(1)).join("L") + "Z").join(" ");
+    const lam = Math.abs(V.dot(it.normal, light));
+    const mat = it.poly.mat;
+    const hot = hl.has(it.poly.pid);
+    if (mat === "ply") {
+      const l = 0.62 + 0.38 * lam;
+      const base = hot ? [214, 152, 108] : [217, 195, 154];
+      const fill = `rgb(${Math.round(base[0] * l)},${Math.round(base[1] * l)},${Math.round(base[2] * l)})`;
+      const stroke = hot ? "#a33612" : "#4a3f33";
+      out += `<path d="${dpath}" fill="${fill}" stroke="${stroke}" stroke-width="${hot ? 1 : 0.7}" fill-rule="evenodd" stroke-linejoin="round"/>`;
+    } else if (mat === "acrylic") {
+      const o = it.poly.kind === "side" ? 0.55 : 0.32;
+      const stroke = hot ? "rgba(200,69,27,0.9)" : "rgba(23,72,82,0.65)";
+      out += `<path d="${dpath}" fill="rgba(126,178,188,${o})" stroke="${stroke}" stroke-width="${hot ? 1.3 : 0.8}" fill-rule="evenodd" stroke-linejoin="round"/>`;
+    } else if (mat === "engrave") {
+      out += `<path d="${dpath}" fill="rgba(255,255,255,0.42)" stroke="rgba(23,72,82,0.5)" stroke-width="0.6"/>`;
+    } else {
+      out += `<path d="${dpath}" fill="rgba(20,50,58,0.5)" stroke="rgba(20,50,58,0.8)" stroke-width="0.6"/>`;
+    }
+  }
+  for (const dm of dimsFor(active, m)) out += drawDim(dm, project);
+  svg.innerHTML = out;
+  updateDerived(m);
+}
+
+const ACC = "#c8451b", HALO = "#f6f2ea";
+
+function highlightFor(param) {
+  switch (param) {
+    case "t": return new Set(["bottom", "top", "sideL", "sideR", "back", "front", "ins1", "ins2"]);
+    case "acr": case "lip": return new Set(["acrylic"]);
+    case "gap": return new Set(["acrylic", "front"]);
+    case "frame": return new Set(["top"]);
+    default: return new Set();
+  }
+}
+
+function dimsFor(param, m) {
+  if (!param) return [];
+  const p = m.p, Df = m.Dfull, t = p.t, W = p.W, H = p.H;
+  const fh = Df - p.gap;
+  switch (param) {
+    case "W": return [{ a: [0, H + t, Df + t], b: [W, H + t, Df + t], dir: [0, 0.3, 1], dist: 14, label: `Ш ${fmt(W)}` }];
+    case "H": return [{ a: [W + t, 0, Df + t], b: [W + t, H, Df + t], dir: [1, 0, 0.3], dist: 14, label: `В ${fmt(H)}` }];
+    case "D": return [{ a: [W + t, H + t, 0], b: [W + t, H + t, p.D], dir: [0.7, 0.7, 0], dist: 14, label: `Г ${fmt(p.D)}` }];
+    case "t": return [{ a: [W * 0.22, H, fh], b: [W * 0.22, H + t, fh], dir: [0, 0, 1], dist: 9, label: fmt(t) }];
+    case "acr": {
+      const yF = H + t + p.lip + slide * H * 0.8;
+      return [{ a: [W / 2, yF, fh], b: [W / 2, yF, fh + p.acr], dir: [0, 1, 0], dist: 10, label: fmt(p.acr) }];
+    }
+    case "gap": return [{ a: [W * 0.3, H + t, fh], b: [W * 0.3, H + t, Df], dir: [0, 1, 0], dist: 10, label: fmt(p.gap) }];
+    case "tech": return [{ a: [W * 0.72, H + t, p.D], b: [W * 0.72, H + t, p.D + p.tech], dir: [0, 1, 0], dist: 10, label: fmt(p.tech) }];
+    case "lip": return [{ a: [W * 0.35, H + t, fh + p.acr], b: [W * 0.35, H + t + p.lip, fh + p.acr], dir: [0, 0, 1], dist: 9, label: fmt(p.lip) }];
+    case "frame": return [{ a: [0, H / 2, Df + t], b: [p.frame, H / 2, Df + t], dir: [0, 0, 1], dist: 9, label: fmt(p.frame) }];
+    case "ov": {
+      const big = H * 52 / 99.4;
+      const y0 = H / 2 - (big + p.ov / 2) / 2, y1 = H / 2 + (big + p.ov / 2) / 2;
+      return [{ a: [W + t, y0, Df + t], b: [W + t, y1, Df + t], dir: [1, 0, 0.3], dist: 12,
+        label: `шип ${fmt(big + p.ov / 2, 2)} / паз ${fmt(big - p.ov / 2, 2)}` }];
+    }
+  }
+  return [];
+}
+
+function drawDim(dm, project) {
+  const off = V.mul(V.norm(dm.dir), dm.dist);
+  const A3 = V.add(dm.a, off), B3 = V.add(dm.b, off);
+  const P1 = project(dm.a), P2 = project(dm.b), A = project(A3), B = project(B3);
+  if (A.z <= 1 || B.z <= 1) return "";
+  const ux = B.x - A.x, uy = B.y - A.y;
+  const len = Math.hypot(ux, uy) || 1;
+  const u = [ux / len, uy / len], pr = [-u[1], u[0]];
+  const arrow = (tip, d) =>
+    `M${tip.x.toFixed(1)},${tip.y.toFixed(1)} L${(tip.x - d[0] * 9 + pr[0] * 3.2).toFixed(1)},${(tip.y - d[1] * 9 + pr[1] * 3.2).toFixed(1)}` +
+    ` L${(tip.x - d[0] * 9 - pr[0] * 3.2).toFixed(1)},${(tip.y - d[1] * 9 - pr[1] * 3.2).toFixed(1)} Z`;
+  const line = (a, b, w = 1.1) =>
+    `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${ACC}" stroke-width="${w}"/>`;
+  const extend = (from, to, k) => ({ x: to.x + (to.x - from.x) / (Math.hypot(to.x - from.x, to.y - from.y) || 1) * k,
+    y: to.y + (to.y - from.y) / (Math.hypot(to.x - from.x, to.y - from.y) || 1) * k, z: to.z });
+  let g = line(P1, extend(P1, A, 5), 0.8) + line(P2, extend(P2, B, 5), 0.8);
+  if (len >= 30) {
+    g += line(A, B) + `<path d="${arrow(A, [-u[0], -u[1]])} ${arrow(B, u)}" fill="${ACC}"/>`;
+  } else {
+    const tA = { x: A.x - u[0] * 20, y: A.y - u[1] * 20 }, tB = { x: B.x + u[0] * 20, y: B.y + u[1] * 20 };
+    g += line(tA, A) + line(B, tB) + line(A, B, 0.8) +
+      `<path d="${arrow(A, u)} ${arrow(B, [-u[0], -u[1]])}" fill="${ACC}"/>`;
+  }
+  let ox = (A.x - P1.x + B.x - P2.x) / 2, oy = (A.y - P1.y + B.y - P2.y) / 2;
+  const ol = Math.hypot(ox, oy);
+  if (ol > 1) { ox /= ol; oy /= ol; } else { ox = 0; oy = -1; }
+  const push = len >= 30 ? 14 : 26;
+  const mx = (A.x + B.x) / 2 + ox * push, my = (A.y + B.y) / 2 + oy * push + 4;
+  g += `<text x="${mx.toFixed(1)}" y="${my.toFixed(1)}" text-anchor="middle"` +
+    ` font-family="SF Mono, ui-monospace, Menlo, monospace" font-size="12.5" font-weight="600"` +
+    ` fill="${ACC}" stroke="${HALO}" stroke-width="3.5" paint-order="stroke">${dm.label}</text>`;
+  return g;
+}
+
+function fmt(v, d = 1) { return (+v.toFixed(d)).toString().replace(".", ","); }
+
+function updateDerived(m) {
+  const p = m.p, Df = m.Dfull;
+  document.getElementById("headDims").innerHTML =
+    `внутр. <b>${fmt(p.W)} × ${fmt(p.H)} × ${fmt(p.D)}</b> · габарит <b>${fmt(p.W + 2 * p.t)} × ${fmt(p.H + 2 * p.t)} × ${fmt(Df + 2 * p.t)}</b> мм`;
+  const bigW = p.W * 52 / 99.4, bigH = p.H * 52 / 99.4, small = Df * 14 / 46.6;
+  document.getElementById("derived").innerHTML =
+    `полная полость <b>${fmt(Df, 2)}</b> мм (${fmt(p.D)} + ${fmt(p.acr)} + ${fmt(p.tech)})<br>` +
+    `окно <b>${fmt(p.W - 2 * p.frame)} × ${fmt(p.H - 2 * p.frame)}</b> мм<br>` +
+    `оргстекло <b>${fmt(p.W - 0.6)} × ${fmt(p.H + p.t + p.lip)}</b> мм<br>` +
+    `шип/паз X <b>${fmt(bigW + p.ov / 2, 2)}/${fmt(bigW - p.ov / 2, 2)}</b>` +
+    ` · Y <b>${fmt(bigH + p.ov / 2, 2)}/${fmt(bigH - p.ov / 2, 2)}</b><br>` +
+    `малый шип <b>${fmt(small + p.ov / 2, 2)}</b> · зазор крышки <b>${fmt(p.gap - p.acr, 2)}</b> мм`;
+  const warn = [];
+  if (p.gap <= p.acr) warn.push("Щель ≤ толщины оргстекла — крышка не войдёт.");
+  if (p.W - 2 * p.frame < 10 || p.H - 2 * p.frame < 10) warn.push("Окно слишком мало или отсутствует.");
+  if (Df - p.gap < 8) warn.push("Стенки под каналом почти нет — уменьшите щель или увеличьте глубину.");
+  document.getElementById("warnings").innerHTML = warn.map((w) => `<div class="warn">${w}</div>`).join("");
+}
+
+const HAIR = 0.0762;
+function pieceToPath(pc, ox, oy) {
+  const ring = (pts) => "M " + pts.map((q) => `${+(ox + q[0]).toFixed(4)},${+(oy + q[1]).toFixed(4)}`).join(" L ") + " Z";
+  const rr = (r) => {
+    const x = ox + r.x, y = oy + r.y;
+    return `M ${x + r.r},${y} L ${x + r.w - r.r},${y} Q ${x + r.w},${y} ${x + r.w},${y + r.r}` +
+      ` L ${x + r.w},${y + r.h - r.r} Q ${x + r.w},${y + r.h} ${x + r.w - r.r},${y + r.h}` +
+      ` L ${x + r.r},${y + r.h} Q ${x},${y + r.h} ${x},${y + r.h - r.r}` +
+      ` L ${x},${y + r.r} Q ${x},${y} ${x + r.r},${y} Z`;
+  };
+  let d = pc.pts ? ring(pc.pts) : rr(pc.rounded);
+  if (pc.holes) for (const h of pc.holes) d += " " + rr(h);
+  return d;
+}
+
+function exportSVG(which) {
+  const m = BG.model(params);
+  const gapX = 6, labelH = 16;
+  const ids = which === "ply"
+    ? ["front", "bottom", "back", "sideL", "sideR", "top", "ins1", "ins2"]
+    : ["acrylic"];
+  const els = [];
+  let x = 0;
+  const y = labelH + 6;
+  let maxH = 0;
+  for (const id of ids) {
+    const pc = m.pieces.find((q) => q.id === id);
+    const style = (color) => `fill:none;stroke:${color};stroke-width:${HAIR};stroke-linecap:butt;stroke-linejoin:miter`;
+    const color = id === "top" ? "#000000" : "#1b1918";
+    els.push(`<path d="${pieceToPath(pc, x, y)}" style="${style(color)}"/>`);
+    if (pc.strip) {
+      const s = pc.strip;
+      els.push(`<path d="M ${x + s.x},${y + s.y} L ${x + s.x + s.w},${y + s.y} L ${x + s.x + s.w},${y + s.y + s.h} L ${x + s.x},${y + s.y + s.h} Z" style="${style("#1b1918")}"/>`);
+      els.push(`<g transform="translate(${(x + pc.torn.x).toFixed(4)},${(y + pc.torn.y).toFixed(4)}) scale(${pc.torn.scale.toFixed(8)})">` +
+        `<path d="${pc.torn.d}" style="fill:none;stroke:#1b1918;stroke-width:${(HAIR / pc.torn.scale).toFixed(4)};stroke-linecap:butt;stroke-linejoin:miter"/></g>`);
+    }
+    x += pc.w + gapX;
+    maxH = Math.max(maxH, pc.h);
+  }
+  const label = (which === "ply" ? `${fmt(params.t)}ММ` : `ОРГСТЕКЛО ${fmt(params.acr)}ММ`) +
+    ` — ${fmt(params.W)}×${fmt(params.H)}×${fmt(params.D)}`;
+  const w = Math.max(x - gapX + 1, label.length * 5.6 + 2), h = y + maxH + 1;
+  const svg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n` +
+    `<svg version="1.1" width="${w.toFixed(2)}mm" height="${h.toFixed(2)}mm" viewBox="0 0 ${w.toFixed(2)} ${h.toFixed(2)}" xmlns="http://www.w3.org/2000/svg">\n` +
+    `<text x="0" y="${labelH - 4}" font-family="Arial" font-size="10" fill="#1b1918">${label}</text>\n` +
+    els.join("\n") + "\n</svg>\n";
+  const name = `korobka_${params.W}x${params.H}x${params.D}_t${which === "ply" ? params.t : params.acr}_${which === "ply" ? "fanera" : "akril"}.svg`;
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+for (const input of document.querySelectorAll("#panel input[data-p]")) {
+  input.value = params[input.dataset.p];
+  input.addEventListener("input", () => {
+    const v = parseFloat(input.value);
+    if (!isFinite(v)) return;
+    params[input.dataset.p] = v;
+    localStorage.setItem(LS_KEY, JSON.stringify(params));
+    render();
+  });
+  input.addEventListener("focus", () => { focusParam = input.dataset.p; render(); });
+  input.addEventListener("blur", () => { focusParam = null; render(); });
+}
+for (const row of document.querySelectorAll("#panel .param")) {
+  const inp = row.querySelector("input[data-p]");
+  if (!inp) continue;
+  row.addEventListener("mouseenter", () => { hoverParam = inp.dataset.p; render(); });
+  row.addEventListener("mouseleave", () => { hoverParam = null; render(); });
+}
+document.getElementById("reset").addEventListener("click", () => {
+  params = Object.assign({}, BG.DEFAULTS);
+  localStorage.removeItem(LS_KEY);
+  for (const input of document.querySelectorAll("#panel input[data-p]")) input.value = params[input.dataset.p];
+  render();
+});
+document.getElementById("explode").addEventListener("input", (e) => { explode = +e.target.value; render(); });
+document.getElementById("slide").addEventListener("input", (e) => { slide = +e.target.value; render(); });
+document.getElementById("dlPly").addEventListener("click", () => exportSVG("ply"));
+document.getElementById("dlAcr").addEventListener("click", () => exportSVG("acr"));
+
+const view = document.getElementById("view");
+let drag = null;
+view.addEventListener("pointerdown", (e) => {
+  drag = { x: e.clientX, y: e.clientY, theta: cam.theta, phi: cam.phi };
+  view.classList.add("dragging");
+  view.setPointerCapture(e.pointerId);
+});
+view.addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  cam.theta = drag.theta + (e.clientX - drag.x) * 0.008;
+  cam.phi = Math.max(-1.5, Math.min(1.5, drag.phi + (e.clientY - drag.y) * 0.008));
+  render();
+});
+view.addEventListener("pointerup", () => { drag = null; view.classList.remove("dragging"); });
+view.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  cam.dist *= Math.exp(e.deltaY * 0.0012);
+  render();
+}, { passive: false });
+window.addEventListener("resize", render);
+
+render();
+</script>
+</body>
+</html>
