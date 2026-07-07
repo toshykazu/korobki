@@ -21,24 +21,24 @@
   const DEFAULTS = {
     W: 99.4, H: 99.4, D: 44.2, t: 3.4,
     acr: 2.0, gap: 2.4,
-    kerf: 0.2, frame: 4.2, lip: 0,
+    kerf: 0.2, fit: 0.1, frame: 4.2, lip: 0,
     tornOff: STRIP_FRONT,
   };
 
   function joints(p) {
     const Dfull = p.D + p.gap;
-    const k = p.kerf;
+    const g = p.kerf + p.fit / 2;
     const big = (L) => L * BIG_R;
     const j = {
       Dfull,
-      tabW: [p.W / 2 - (big(p.W) + k) / 2, p.W / 2 + (big(p.W) + k) / 2],
-      slotW: [p.W / 2 - (big(p.W) - k) / 2, p.W / 2 + (big(p.W) - k) / 2],
-      tabH: [p.H / 2 - (big(p.H) + k) / 2, p.H / 2 + (big(p.H) + k) / 2],
-      slotH: [p.H / 2 - (big(p.H) - k) / 2, p.H / 2 + (big(p.H) - k) / 2],
+      tabW: [p.W / 2 - (big(p.W) + g) / 2, p.W / 2 + (big(p.W) + g) / 2],
+      slotW: [p.W / 2 - (big(p.W) - g) / 2, p.W / 2 + (big(p.W) - g) / 2],
+      tabH: [p.H / 2 - (big(p.H) + g) / 2, p.H / 2 + (big(p.H) + g) / 2],
+      slotH: [p.H / 2 - (big(p.H) - g) / 2, p.H / 2 + (big(p.H) - g) / 2],
       smallC: Dfull * SMALL_C,
-      smallTab: Dfull * SMALL_R + k,
-      smallSlot: Dfull * SMALL_R - k,
-      tipE: p.tipComp === false ? 0 : k,
+      smallTab: Dfull * SMALL_R + g,
+      smallSlot: Dfull * SMALL_R - g,
+      tipE: p.tipComp === false ? 0 : p.kerf / 2,
     };
     return j;
   }
