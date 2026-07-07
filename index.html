@@ -159,7 +159,7 @@
     </div>
     <div class="group">
       <h2>Рез и окно</h2>
-      <div class="param"><label>Толщина реза <small>kerf; шип +k, паз −k, торцы +k/2</small></label><input data-p="kerf" type="number" step="0.05" min="0"><span class="unit">мм</span></div>
+      <div class="param"><label>Толщина реза <small>kerf; ширина реза лазера, наружные торцы +k/2</small></label><input data-p="kerf" type="number" step="0.05" min="0"><span class="unit">мм</span></div>
       <div class="param"><label>Натяг <small>плотность шип/паз сверх реза, суммарно</small></label><input data-p="fit" type="number" step="0.05" min="0"><span class="unit">мм</span></div>
       <div class="param"><label>Рамка окна <small>от внутреннего края</small></label><input data-p="frame" type="number" step="0.1" min="1"><span class="unit">мм</span></div>
       <div class="param"><label>Надпись TORN <small>от переднего края крышки</small></label><input data-p="tornOff" type="number" step="0.5" min="0"><span class="unit">мм</span></div>
@@ -387,6 +387,8 @@ function highlightFor(param) {
     case "acr": case "tornOff": return new Set(["acrylic"]);
     case "gap": return new Set(["acrylic", "sideL", "sideR", "back", "front"]);
     case "frame": return new Set(["top"]);
+    case "kerf": return new Set(["top"]);
+    case "fit": return new Set(["bottom", "top", "sideL", "sideR", "back", "front"]);
     default: return new Set();
   }
 }
@@ -411,12 +413,17 @@ function dimsFor(param, m) {
       const zTop = Df - p.gap + p.acr;
       return [{ a: [W * 0.68, yF, zTop], b: [W * 0.68, yF - p.tornOff, zTop], dir: [0, 0, 1], dist: 10, label: fmt(p.tornOff) }];
     }
-    case "kerf": case "fit": {
+    case "fit": {
       const big = H * 52 / 99.4;
       const g = p.kerf + p.fit / 2;
       const y0 = H / 2 - (big + g) / 2, y1 = H / 2 + (big + g) / 2;
       return [{ a: [W + t, y0, Df + t], b: [W + t, y1, Df + t], dir: [1, 0, 0.3], dist: 12,
         label: `шип ${fmt(big + g, 2)} / паз ${fmt(big - g, 2)}` }];
+    }
+    case "kerf": {
+      const e = p.kerf / 2;
+      return [{ a: [-t - e, H + t + e, Df + t], b: [W + t + e, H + t + e, Df + t], dir: [0, 0.3, 1], dist: 14,
+        label: `верх ${fmt(W + 2 * t + p.kerf, 2)} · торцы +${fmt(e, 3)}` }];
     }
   }
   return [];
