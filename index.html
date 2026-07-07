@@ -169,6 +169,7 @@
       <button class="primary" id="dlPly">Скачать SVG — фанера</button>
       <button class="secondary" id="dlAcr">Скачать SVG — оргстекло</button>
       <button class="ghost" id="reset">Сбросить к эталону 99.4 × 99.4 × 44.2</button>
+      <button class="ghost" id="resetTall">Сбросить к эталону 79.4 × 174.4 × 44.2</button>
     </div>
   </nav>
   <div id="stage">
@@ -555,12 +556,14 @@ for (const row of document.querySelectorAll("#panel .param")) {
   row.addEventListener("mouseenter", () => { hoverParam = inp.dataset.p; render(); });
   row.addEventListener("mouseleave", () => { hoverParam = null; render(); });
 }
-document.getElementById("reset").addEventListener("click", () => {
-  params = Object.assign({}, BG.DEFAULTS);
-  store.del();
+function applyReset(preset) {
+  params = Object.assign({}, BG.DEFAULTS, preset);
+  if (preset) store.set(JSON.stringify(params)); else store.del();
   for (const input of document.querySelectorAll("#panel input[data-p]")) input.value = params[input.dataset.p];
   render();
-});
+}
+document.getElementById("reset").addEventListener("click", () => applyReset(null));
+document.getElementById("resetTall").addEventListener("click", () => applyReset({ W: 79.4, H: 174.4, D: 44.2 }));
 document.getElementById("explode").addEventListener("input", (e) => { explode = +e.target.value; render(); });
 document.getElementById("slide").addEventListener("input", (e) => { slide = +e.target.value; render(); });
 document.getElementById("dlPly").addEventListener("click", () => exportSVG("ply"));
