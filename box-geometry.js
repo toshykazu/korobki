@@ -21,7 +21,7 @@
   const DEFAULTS = {
     W: 99.4, H: 99.4, D: 44.2, t: 3.4,
     acr: 2.0, gap: 2.4,
-    kerf: 0.2, fit: 0.1, frame: 4.2, lip: 0,
+    kerf: 0.15, fit: 0.2, frame: 4.2, lip: 0,
     tornOff: STRIP_FRONT,
   };
 
