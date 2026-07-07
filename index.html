@@ -135,6 +135,37 @@
   }
   #viewbar input[type=range] { width: 150px; accent-color: var(--accent); }
   #viewbar .hint { margin-left: auto; font-size: 11.5px; color: var(--ink-2); pointer-events: none; }
+
+  #view path[data-pid] { cursor: pointer; }
+  #detail {
+    position: absolute;
+    top: 14px; right: 14px;
+    width: 364px;
+    max-width: 46%;
+    background: #fffdf8;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    box-shadow: 0 6px 24px rgba(38, 34, 28, 0.16);
+    padding: 10px 12px 4px;
+    display: none;
+  }
+  #detail .dhead { display: flex; align-items: baseline; gap: 10px; }
+  #detail .dhead b { font-size: 13.5px; white-space: nowrap; }
+  #detail .dhead span {
+    flex: 1;
+    font: 11px "SF Mono", ui-monospace, Menlo, monospace;
+    color: var(--ink-2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #detail .dhead button {
+    background: none; border: none; cursor: pointer;
+    font-size: 17px; line-height: 1; padding: 0 2px;
+    color: var(--ink-2);
+  }
+  #detail .dhead button:hover { color: var(--accent); }
+  #detail svg { width: 100%; display: block; }
 </style>
 </head>
 <body>
@@ -177,7 +208,11 @@
     <div id="viewbar">
       <div class="ctl"><label>Разнести</label><input type="range" id="explode" min="0" max="45" step="0.5" value="0"></div>
       <div class="ctl"><label>Крышка</label><input type="range" id="slide" min="0" max="1" step="0.01" value="0"></div>
-      <span class="hint">вращение — мышью, масштаб — колесом</span>
+      <span class="hint">вращение — мышью, масштаб — колесом, чертёж детали — кликом по ней</span>
+    </div>
+    <div id="detail">
+      <div class="dhead"><b id="detailName"></b><span id="detailSize"></span><button id="detailClose" title="Закрыть">×</button></div>
+      <svg id="detailSvg"></svg>
     </div>
   </div>
 </main>
@@ -200,7 +235,7 @@ delete storedParams.ov;
 let params = Object.assign({}, BG.DEFAULTS, storedParams);
 let cam = { theta: -0.62, phi: 0.42, dist: 0 };
 let explode = 0, slide = 0;
-let focusParam = null, hoverParam = null;
+let focusParam = null, hoverParam = null, selectedPiece = null;
 
 const V = {
   add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]],
@@ -352,6 +387,7 @@ function render() {
 
   const active = focusParam || hoverParam;
   const hl = highlightFor(active);
+  if (selectedPiece) hl.add(selectedPiece);
   let out = "";
   for (const it of items) {
     const dpath = it.rings2.map((ring) =>
@@ -359,24 +395,26 @@ function render() {
     const lam = Math.abs(V.dot(it.normal, light));
     const mat = it.poly.mat;
     const hot = hl.has(it.poly.pid);
+    const pid = ` data-pid="${it.poly.pid}"`;
     if (mat === "ply") {
       const l = 0.62 + 0.38 * lam;
       const base = hot ? [214, 152, 108] : [217, 195, 154];
       const fill = `rgb(${Math.round(base[0] * l)},${Math.round(base[1] * l)},${Math.round(base[2] * l)})`;
       const stroke = hot ? "#a33612" : "#4a3f33";
-      out += `<path d="${dpath}" fill="${fill}" stroke="${stroke}" stroke-width="${hot ? 1 : 0.7}" fill-rule="evenodd" stroke-linejoin="round"/>`;
+      out += `<path${pid} d="${dpath}" fill="${fill}" stroke="${stroke}" stroke-width="${hot ? 1 : 0.7}" fill-rule="evenodd" stroke-linejoin="round"/>`;
     } else if (mat === "acrylic") {
       const o = it.poly.kind === "side" ? 0.55 : 0.32;
       const stroke = hot ? "rgba(200,69,27,0.9)" : "rgba(23,72,82,0.65)";
-      out += `<path d="${dpath}" fill="rgba(126,178,188,${o})" stroke="${stroke}" stroke-width="${hot ? 1.3 : 0.8}" fill-rule="evenodd" stroke-linejoin="round"/>`;
+      out += `<path${pid} d="${dpath}" fill="rgba(126,178,188,${o})" stroke="${stroke}" stroke-width="${hot ? 1.3 : 0.8}" fill-rule="evenodd" stroke-linejoin="round"/>`;
     } else if (mat === "engrave") {
-      out += `<path d="${dpath}" fill="rgba(255,255,255,0.42)" stroke="rgba(23,72,82,0.5)" stroke-width="0.6"/>`;
+      out += `<path${pid} d="${dpath}" fill="rgba(255,255,255,0.42)" stroke="rgba(23,72,82,0.5)" stroke-width="0.6"/>`;
     } else {
-      out += `<path d="${dpath}" fill="rgba(20,50,58,0.5)" stroke="rgba(20,50,58,0.8)" stroke-width="0.6"/>`;
+      out += `<path${pid} d="${dpath}" fill="rgba(20,50,58,0.5)" stroke="rgba(20,50,58,0.8)" stroke-width="0.6"/>`;
     }
   }
   for (const dm of dimsFor(active, m)) out += drawDim(dm, project);
   svg.innerHTML = out;
+  drawDetail(m);
   updateDerived(m);
 }
 
@@ -465,6 +503,156 @@ function drawDim(dm, project) {
 }
 
 function fmt(v, d = 1) { return (+v.toFixed(d)).toString().replace(".", ","); }
+
+function sheetDims(pc, m) {
+  const p = m.p, j = m.j, t = p.t, e = j.tipE, W = p.W, H = p.H, Df = j.Dfull;
+  const w = pc.w, h = pc.h;
+  const off = pc.off || [0, 0];
+  const nx = (x) => x - off[0], ny = (y) => y - off[1];
+  const dims = [];
+  const D = (a, b, o, label) => dims.push({ a, b, off: o, label });
+  const [aw, bw] = j.tabW, [sw0, sw1] = j.slotW, [ah, bh] = j.tabH, [sh0, sh1] = j.slotH;
+  const tabWw = bw - aw, slotWw = sw1 - sw0, tabHw = bh - ah, slotHw = sh1 - sh0;
+  const F = (v) => fmt(v, 2);
+  switch (pc.id) {
+    case "bottom": {
+      D([0, 0], [w, 0], 44, F(w));
+      D([0, 0], [0, h], -28, F(h));
+      D([nx(aw + t), 0], [nx(bw + t), 0], 12, `шип ${F(tabWw)}`);
+      D([nx(W + t), ny(ah + t)], [w, ny(ah + t)], 12, F(t + e));
+      D([0, ny(ah + t)], [0, ny(bh + t)], -12, `шип ${F(tabHw)}`);
+      break;
+    }
+    case "top": {
+      const hole = pc.holes[0];
+      D([0, 0], [w, 0], 28, F(w));
+      D([0, 0], [0, h], -28, F(h));
+      D([hole.x, hole.y + hole.h / 2], [hole.x + hole.w, hole.y + hole.h / 2], 0, `окно ${F(hole.w)}`);
+      D([hole.x + hole.w / 2, hole.y], [hole.x + hole.w / 2, hole.y + hole.h], 0, `окно ${F(hole.h)}`);
+      D([0, hole.y + hole.h * 0.25], [hole.x, hole.y + hole.h * 0.25], 0, F(hole.x));
+      D([0, ny(sh0 + t)], [0, ny(sh1 + t)], -12, `паз ${F(slotHw)}`);
+      D([0, ny(sh1 + t)], [nx(t), ny(sh1 + t)], -12, F(t + e));
+      D([nx(sw0 + t), h], [nx(sw1 + t), h], -12, `паз ${F(slotWw)}`);
+      break;
+    }
+    case "sideL": case "sideR": {
+      const n0 = j.smallC + t - j.smallSlot / 2, n1 = j.smallC + t + j.smallSlot / 2;
+      const [at, bt] = j.tabH;
+      D([0, 0], [w, 0], 44, F(w));
+      D([0, 0], [0, h], -28, F(h));
+      D([nx(n0), 0], [nx(n1), 0], 12, `вырез ${F(j.smallSlot)}`);
+      D([0, 0], [nx(j.smallC + t), 0], 28, F(j.smallC + t + e));
+      D([w, ny(at + t)], [w, ny(bt + t)], 12, `шип ${F(tabHw)}`);
+      D([nx(Df + t), ny(at + t)], [w, ny(at + t)], 12, F(t + e));
+      D([0, ny(sh0 + t)], [0, ny(sh1 + t)], -12, `паз ${F(slotHw)}`);
+      if (pc.id === "sideR")
+        for (const dm of dims) { dm.a = [w - dm.a[0], dm.a[1]]; dm.b = [w - dm.b[0], dm.b[1]]; dm.off = -dm.off; }
+      break;
+    }
+    case "back": {
+      const c = Df - j.smallC;
+      const s0 = c + t - j.smallTab / 2, s1 = c + t + j.smallTab / 2;
+      D([0, 0], [w, 0], 44, F(w));
+      D([0, 0], [0, h], -28, F(h));
+      D([0, ny(aw + t)], [0, ny(bw + t)], -12, `шип ${F(tabWw)}`);
+      D([0, ny(aw + t)], [nx(t), ny(aw + t)], -12, F(t + e));
+      D([w, ny(sw0 + t)], [w, ny(sw1 + t)], 12, `паз ${F(slotWw)}`);
+      D([nx(s0), 0], [nx(s1), 0], 12, `шип ${F(j.smallTab)}`);
+      D([nx(c + t), 0], [w, 0], 28, F(j.smallC + t + e));
+      break;
+    }
+    case "front": {
+      const s0 = j.smallC + t - j.smallTab / 2, s1 = j.smallC + t + j.smallTab / 2;
+      D([0, 0], [w, 0], 44, F(w));
+      D([0, 0], [0, h], -28, F(h));
+      D([nx(s0), 0], [nx(s1), 0], 12, `шип ${F(j.smallTab)}`);
+      D([0, 0], [nx(j.smallC + t), 0], 28, F(j.smallC + t + e));
+      D([nx(s0), 0], [nx(s0), ny(t)], -12, F(t + e));
+      D([0, ny(sw0 + t)], [0, ny(sw1 + t)], -12, `паз ${F(slotWw)}`);
+      break;
+    }
+    case "ins1": case "ins2": {
+      D([0, 0], [w, 0], 12, F(w));
+      D([0, 0], [0, h], -12, F(h));
+      break;
+    }
+    case "acrylic": {
+      const s = pc.strip;
+      D([0, 0], [w, 0], 12, F(w));
+      D([0, 0], [0, h], -12, F(h));
+      D([w, s.y], [w, s.y + s.h], 12, `полоса ${F(s.h)}`);
+      D([w, s.y + s.h], [w, h], 28, F(h - s.y - s.h));
+      break;
+    }
+  }
+  return dims;
+}
+
+function dim2(T, dm) {
+  const A0 = T(dm.a), B0 = T(dm.b);
+  let ux = B0.x - A0.x, uy = B0.y - A0.y;
+  const L = Math.hypot(ux, uy) || 1;
+  ux /= L; uy /= L;
+  const n = [uy, -ux];
+  const o = dm.off, so = Math.sign(o) || 1;
+  const A = { x: A0.x + n[0] * o, y: A0.y + n[1] * o };
+  const B = { x: B0.x + n[0] * o, y: B0.y + n[1] * o };
+  const line = (a, b, sw) =>
+    `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${ACC}" stroke-width="${sw}"/>`;
+  const arrow = (tip, d) =>
+    `M${tip.x.toFixed(1)},${tip.y.toFixed(1)} L${(tip.x - d[0] * 7 + n[0] * 2.6).toFixed(1)},${(tip.y - d[1] * 7 + n[1] * 2.6).toFixed(1)}` +
+    ` L${(tip.x - d[0] * 7 - n[0] * 2.6).toFixed(1)},${(tip.y - d[1] * 7 - n[1] * 2.6).toFixed(1)} Z`;
+  let g = "";
+  if (Math.abs(o) > 1) {
+    g += line(A0, { x: A.x + n[0] * 4 * so, y: A.y + n[1] * 4 * so }, 0.6) +
+      line(B0, { x: B.x + n[0] * 4 * so, y: B.y + n[1] * 4 * so }, 0.6);
+  }
+  if (L >= 26) {
+    g += line(A, B, 0.9) + `<path d="${arrow(A, [-ux, -uy])} ${arrow(B, [ux, uy])}" fill="${ACC}"/>`;
+  } else {
+    const tA = { x: A.x - ux * 14, y: A.y - uy * 14 }, tB = { x: B.x + ux * 14, y: B.y + uy * 14 };
+    g += line(tA, A, 0.9) + line(B, tB, 0.9) + line(A, B, 0.6) +
+      `<path d="${arrow(A, [ux, uy])} ${arrow(B, [-ux, -uy])}" fill="${ACC}"/>`;
+  }
+  const vert = Math.abs(uy) > Math.abs(ux);
+  let mx = (A.x + B.x) / 2 + n[0] * 11 * so, my = (A.y + B.y) / 2 + n[1] * 11 * so;
+  if (vert) mx += 3.5; else my += 3.5;
+  const rot = vert ? ` transform="rotate(-90 ${mx.toFixed(1)} ${my.toFixed(1)})"` : "";
+  g += `<text x="${mx.toFixed(1)}" y="${my.toFixed(1)}" text-anchor="middle"${rot}` +
+    ` font-family="SF Mono, ui-monospace, Menlo, monospace" font-size="10.5" font-weight="600"` +
+    ` fill="${ACC}" stroke="#fffdf8" stroke-width="3" paint-order="stroke">${dm.label}</text>`;
+  return g;
+}
+
+function drawDetail(m) {
+  const box = document.getElementById("detail");
+  const pc = selectedPiece && m.pieces.find((q) => q.id === selectedPiece);
+  if (!pc) { box.style.display = "none"; return; }
+  box.style.display = "block";
+  document.getElementById("detailName").textContent = pc.name;
+  document.getElementById("detailSize").textContent =
+    `${fmt(pc.w, 2)} × ${fmt(pc.h, 2)} · ${pc.material === "ply" ? `фанера ${fmt(m.p.t)}` : `оргстекло ${fmt(m.p.acr)}`} мм`;
+  const M = 64, SW = 340, HMAX = 470;
+  const s = Math.min((SW - 2 * M) / pc.w, (HMAX - 2 * M) / pc.h);
+  const SH = Math.round(pc.h * s + 2 * M);
+  const X0 = (SW - pc.w * s) / 2, Y0 = M;
+  const T = ([x, y]) => ({ x: X0 + x * s, y: Y0 + y * s });
+  let out = `<g transform="translate(${X0},${Y0}) scale(${s})">`;
+  const body = pieceToPath(pc, 0, 0);
+  const bodyFill = pc.material === "ply" ? "rgba(217,195,154,0.55)" : "rgba(126,178,188,0.22)";
+  out += `<path d="${body}" fill="${bodyFill}" stroke="#4a3f33" fill-rule="evenodd" vector-effect="non-scaling-stroke" stroke-width="1" stroke-linejoin="round"/>`;
+  if (pc.strip) {
+    const st = pc.strip;
+    out += `<rect x="${st.x}" y="${st.y}" width="${st.w}" height="${st.h}" fill="rgba(126,178,188,0.3)" stroke="rgba(23,72,82,0.6)" vector-effect="non-scaling-stroke" stroke-width="1"/>`;
+    out += `<path d="${pc.torn.d}" transform="translate(${pc.torn.x},${pc.torn.y}) scale(${pc.torn.scale})" fill="rgba(20,50,58,0.55)"/>`;
+  }
+  out += "</g>";
+  for (const dm of sheetDims(pc, m)) out += dim2(T, dm);
+  const svg = document.getElementById("detailSvg");
+  svg.setAttribute("viewBox", `0 0 ${SW} ${SH}`);
+  svg.style.aspectRatio = `${SW} / ${SH}`;
+  svg.innerHTML = out;
+}
 
 function updateDerived(m) {
   const p = m.p, Df = m.Dfull;
@@ -574,7 +762,7 @@ let drag = null;
 view.addEventListener("pointerdown", (e) => {
   drag = { x: e.clientX, y: e.clientY, theta: cam.theta, phi: cam.phi };
   view.classList.add("dragging");
-  view.setPointerCapture(e.pointerId);
+  try { view.setPointerCapture(e.pointerId); } catch (err) {}
 });
 view.addEventListener("pointermove", (e) => {
   if (!drag) return;
@@ -582,7 +770,17 @@ view.addEventListener("pointermove", (e) => {
   cam.phi = Math.max(-1.5, Math.min(1.5, drag.phi + (e.clientY - drag.y) * 0.008));
   render();
 });
-view.addEventListener("pointerup", () => { drag = null; view.classList.remove("dragging"); });
+view.addEventListener("pointerup", (e) => {
+  const wasDrag = drag && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 5;
+  drag = null;
+  view.classList.remove("dragging");
+  if (wasDrag) return;
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const pid = el && el.getAttribute ? el.getAttribute("data-pid") : null;
+  selectedPiece = pid && pid !== selectedPiece ? pid : null;
+  render();
+});
+document.getElementById("detailClose").addEventListener("click", () => { selectedPiece = null; render(); });
 view.addEventListener("wheel", (e) => {
   e.preventDefault();
   cam.dist *= Math.exp(e.deltaY * 0.0012);
